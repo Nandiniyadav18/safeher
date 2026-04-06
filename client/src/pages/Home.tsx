@@ -31,7 +31,7 @@ const Tile = ({
 export default function Home() {
   const recognitionRef = useRef<any>(null);
 
-  // 🚨 SOS FUNCTION
+  // 🚨 SOS FUNCTION (FIXED)
   const triggerSOS = (source = "Manual") => {
     console.log("SOS:", source);
 
@@ -52,10 +52,10 @@ Location:
 https://maps.google.com/?q=${latitude},${longitude}`;
 
         const phone =
-          localStorage.getItem("emergencyContact") || "91XXXXXXXXXX";
+          localStorage.getItem("emergencyContact") || "919876543210";
 
-        // Open WhatsApp with message
-        window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(
+        // ✅ FIXED WHATSAPP LINK
+        window.location.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
           msg
         )}`;
       },
@@ -63,10 +63,9 @@ https://maps.google.com/?q=${latitude},${longitude}`;
     );
   };
 
-  // 🎤 VOICE FUNCTION
+  // 🎤 VOICE
   const startVoice = async () => {
     try {
-      // Ask mic permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       const Speech =
@@ -78,7 +77,6 @@ https://maps.google.com/?q=${latitude},${longitude}`;
       }
 
       const recognition = new Speech();
-
       recognition.continuous = true;
       recognition.lang = "en-IN";
 
@@ -98,14 +96,8 @@ https://maps.google.com/?q=${latitude},${longitude}`;
         }
       };
 
-      recognition.onerror = (e: any) => {
-        console.log("Voice error:", e);
-      };
-
       recognition.onend = () => {
-        setTimeout(() => {
-          recognition.start();
-        }, 1000);
+        setTimeout(() => recognition.start(), 1000);
       };
 
       recognition.start();
@@ -114,7 +106,7 @@ https://maps.google.com/?q=${latitude},${longitude}`;
       localStorage.setItem("voiceEnabled", "true");
 
       alert("🎤 Voice Protection Enabled!");
-    } catch (err) {
+    } catch {
       alert("Mic permission denied ❌");
     }
   };
@@ -122,63 +114,56 @@ https://maps.google.com/?q=${latitude},${longitude}`;
   // 🔁 AUTO VOICE START
   useEffect(() => {
     const enabled = localStorage.getItem("voiceEnabled");
-
     if (enabled === "true") {
-      setTimeout(() => {
-        startVoice();
-      }, 1000);
+      setTimeout(() => startVoice(), 1000);
     }
   }, []);
 
-  // 📳 SHAKE DETECTION FIXED
+  // 📳 SHAKE DETECTION
   useEffect(() => {
     let last = 0;
 
-    const enableMotion = async () => {
-      // iPhone permission
-      if (
-        typeof (DeviceMotionEvent as any).requestPermission === "function"
-      ) {
-        try {
-          const res = await (DeviceMotionEvent as any).requestPermission();
-          if (res !== "granted") {
-            alert("Motion permission denied ❌");
-            return;
-          }
-        } catch (err) {
-          console.log(err);
-        }
+    const handleMotion = (e: DeviceMotionEvent) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+
+      const total =
+        Math.abs(acc.x || 0) +
+        Math.abs(acc.y || 0) +
+        Math.abs(acc.z || 0);
+
+      if (total - last > 25) {
+        console.log("SHAKE DETECTED 🚨");
+        triggerSOS("Shake");
       }
 
-      const handleMotion = (e: DeviceMotionEvent) => {
-        const acc = e.accelerationIncludingGravity;
-        if (!acc) return;
-
-        const total =
-          Math.abs(acc.x || 0) +
-          Math.abs(acc.y || 0) +
-          Math.abs(acc.z || 0);
-
-        if (total - last > 25) {
-          console.log("SHAKE DETECTED 🚨");
-          triggerSOS("Shake");
-        }
-
-        last = total;
-      };
-
-      window.addEventListener("devicemotion", handleMotion);
+      last = total;
     };
 
-    enableMotion();
+    window.addEventListener("devicemotion", handleMotion);
 
     return () => {
-      window.removeEventListener("devicemotion", () => {});
+      window.removeEventListener("devicemotion", handleMotion);
     };
   }, []);
 
+  // 📳 ENABLE SHAKE PERMISSION (IMPORTANT)
+  const enableShake = async () => {
+    if (typeof (DeviceMotionEvent as any).requestPermission === "function") {
+      const res = await (DeviceMotionEvent as any).requestPermission();
+      if (res === "granted") {
+        alert("Shake Enabled ✅");
+      } else {
+        alert("Shake permission denied ❌");
+      }
+    } else {
+      alert("Shake ready (Android) ✅");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-200 via-pink-100 to-white pb-24">
+
       {/* HEADER */}
       <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-6 py-7 rounded-b-[40px] shadow-xl">
         <h1 className="text-3xl font-bold text-center">💖 SafeHer</h1>
@@ -209,6 +194,16 @@ https://maps.google.com/?q=${latitude},${longitude}`;
           className="w-full bg-pink-500 text-white py-3 rounded-xl shadow"
         >
           🎤 Enable Smart Protection
+        </button>
+      </div>
+
+      {/* 📳 ENABLE SHAKE */}
+      <div className="px-4 mt-2">
+        <button
+          onClick={enableShake}
+          className="w-full bg-green-500 text-white py-3 rounded-xl shadow"
+        >
+          📳 Enable Shake Detection
         </button>
       </div>
 
