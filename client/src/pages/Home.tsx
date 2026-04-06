@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -8,122 +8,68 @@ declare global {
   }
 }
 
-const Tile = ({
-  title,
-  desc,
-  to,
-  icon,
-}: {
-  title: string;
-  desc: string;
-  to: string;
-  icon: string;
-}) => (
+const Tile = ({ title, desc, to, icon }: any) => (
   <Link to={to}>
-    <div className="backdrop-blur-xl bg-white/40 border border-white/30 rounded-3xl p-5 shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300">
+    <div className="backdrop-blur-xl bg-white/40 border border-white/30 rounded-3xl p-5 shadow-xl hover:scale-105 transition">
       <div className="text-3xl mb-2">{icon}</div>
-      <h3 className="font-semibold text-gray-800">{title}</h3>
-      <p className="text-sm text-gray-600 mt-1">{desc}</p>
+      <h3 className="font-semibold">{title}</h3>
+      <p className="text-sm text-gray-600">{desc}</p>
     </div>
   </Link>
 );
 
 export default function Home() {
   const recognitionRef = useRef<any>(null);
+  const [number, setNumber] = useState(
+    localStorage.getItem("emergencyContact") || ""
+  );
 
-  // 🚨 SOS FUNCTION (FIXED)
-  const triggerSOS = (source = "Manual") => {
-    console.log("SOS:", source);
-
+  // 🚨 SOS
+  const triggerSOS = () => {
     navigator.vibrate?.([200, 100, 200]);
 
-    const audio = new Audio(
-      "https://www.soundjay.com/button/beep-07.wav"
-    );
-    audio.play();
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const msg = `🚨 EMERGENCY!
+Help needed!
+https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
+      const phone =
+        localStorage.getItem("emergencyContact") || "919876543210";
 
-        const msg = `🚨 EMERGENCY!
-I need help immediately!
-Location:
-https://maps.google.com/?q=${latitude},${longitude}`;
-
-        const phone =
-          localStorage.getItem("emergencyContact") || "919876543210";
-
-        // ✅ FIXED WHATSAPP LINK
-        window.location.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
-          msg
-        )}`;
-      },
-      () => alert("Location permission denied ❌")
-    );
+      window.location.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
+        msg
+      )}`;
+    });
   };
 
   // 🎤 VOICE
   const startVoice = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+    await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const Speech =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    const Speech =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      if (!Speech) {
-        alert("Voice not supported ❌");
-        return;
+    const rec = new Speech();
+    rec.continuous = true;
+
+    rec.onresult = (e: any) => {
+      const text = e.results[e.results.length - 1][0].transcript.toLowerCase();
+
+      if (text.includes("help") || text.includes("bachao")) {
+        triggerSOS();
       }
+    };
 
-      const recognition = new Speech();
-      recognition.continuous = true;
-      recognition.lang = "en-IN";
-
-      recognition.onresult = (event: any) => {
-        const text =
-          event.results[event.results.length - 1][0].transcript.toLowerCase();
-
-        console.log("Heard:", text);
-
-        if (
-          text.includes("help") ||
-          text.includes("bachao") ||
-          text.includes("save me") ||
-          text.includes("danger")
-        ) {
-          triggerSOS("Voice");
-        }
-      };
-
-      recognition.onend = () => {
-        setTimeout(() => recognition.start(), 1000);
-      };
-
-      recognition.start();
-      recognitionRef.current = recognition;
-
-      localStorage.setItem("voiceEnabled", "true");
-
-      alert("🎤 Voice Protection Enabled!");
-    } catch {
-      alert("Mic permission denied ❌");
-    }
+    rec.start();
+    recognitionRef.current = rec;
+    alert("Voice Enabled 🎤");
   };
 
-  // 🔁 AUTO VOICE START
-  useEffect(() => {
-    const enabled = localStorage.getItem("voiceEnabled");
-    if (enabled === "true") {
-      setTimeout(() => startVoice(), 1000);
-    }
-  }, []);
-
-  // 📳 SHAKE DETECTION
+  // 📳 SHAKE
   useEffect(() => {
     let last = 0;
 
-    const handleMotion = (e: DeviceMotionEvent) => {
+    const motion = (e: any) => {
       const acc = e.accelerationIncludingGravity;
       if (!acc) return;
 
@@ -132,93 +78,68 @@ https://maps.google.com/?q=${latitude},${longitude}`;
         Math.abs(acc.y || 0) +
         Math.abs(acc.z || 0);
 
-      if (total - last > 25) {
-        console.log("SHAKE DETECTED 🚨");
-        triggerSOS("Shake");
-      }
+      if (total - last > 25) triggerSOS();
 
       last = total;
     };
 
-    window.addEventListener("devicemotion", handleMotion);
-
-    return () => {
-      window.removeEventListener("devicemotion", handleMotion);
-    };
+    window.addEventListener("devicemotion", motion);
+    return () => window.removeEventListener("devicemotion", motion);
   }, []);
 
-  // 📳 ENABLE SHAKE PERMISSION (IMPORTANT)
+  // 📳 ENABLE SHAKE
   const enableShake = async () => {
     if (typeof (DeviceMotionEvent as any).requestPermission === "function") {
-      const res = await (DeviceMotionEvent as any).requestPermission();
-      if (res === "granted") {
-        alert("Shake Enabled ✅");
-      } else {
-        alert("Shake permission denied ❌");
-      }
-    } else {
-      alert("Shake ready (Android) ✅");
+      await (DeviceMotionEvent as any).requestPermission();
     }
+    alert("Shake Enabled 📳");
+  };
+
+  // 📞 SAVE CONTACT
+  const saveContact = () => {
+    localStorage.setItem("emergencyContact", number);
+    alert("Saved ✅");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-pink-100 to-white pb-24">
+    <div className="min-h-screen bg-pink-100 p-4">
 
-      {/* HEADER */}
-      <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-6 py-7 rounded-b-[40px] shadow-xl">
-        <h1 className="text-3xl font-bold text-center">💖 SafeHer</h1>
-        <p className="text-center text-sm opacity-90">
-          Your Smart Safety Companion
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold text-center mb-4">💖 SafeHer</h1>
 
-      {/* SAFETY CARD */}
-      <div className="px-4 mt-6">
-        <div className="backdrop-blur-xl bg-white/40 border border-white/30 rounded-3xl p-6 text-center shadow-xl">
-          <h3 className="text-gray-700 font-medium">
-            Current Safety Score
-          </h3>
-          <p className="text-5xl font-bold text-green-500 mt-2 animate-pulse">
-            76%
-          </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Area is Safe 💚
-          </p>
-        </div>
-      </div>
+      {/* CONTACT */}
+      <input
+        value={number}
+        onChange={(e) => setNumber(e.target.value)}
+        placeholder="91xxxxxxxxxx"
+        className="w-full p-3 rounded mb-2"
+      />
 
-      {/* 🎤 ENABLE VOICE */}
-      <div className="px-4 mt-4">
-        <button
-          onClick={startVoice}
-          className="w-full bg-pink-500 text-white py-3 rounded-xl shadow"
-        >
-          🎤 Enable Smart Protection
-        </button>
-      </div>
+      <button onClick={saveContact} className="w-full bg-blue-500 text-white p-2 rounded">
+        Save Contact
+      </button>
 
-      {/* 📳 ENABLE SHAKE */}
-      <div className="px-4 mt-2">
-        <button
-          onClick={enableShake}
-          className="w-full bg-green-500 text-white py-3 rounded-xl shadow"
-        >
-          📳 Enable Shake Detection
-        </button>
-      </div>
+      {/* VOICE */}
+      <button onClick={startVoice} className="w-full bg-pink-500 text-white p-3 mt-3 rounded">
+        🎤 Enable Voice
+      </button>
+
+      {/* SHAKE */}
+      <button onClick={enableShake} className="w-full bg-green-500 text-white p-3 mt-2 rounded">
+        📳 Enable Shake
+      </button>
 
       {/* FEATURES */}
-      <div className="px-4 mt-6 grid grid-cols-2 gap-4">
-        <Tile title="Camera" desc="Scan hidden devices" to="/camera" icon="📷" />
-        <Tile title="News" desc="Safety updates" to="/news" icon="📰" />
-        <Tile title="Siren" desc="Emergency sound" to="/siren" icon="🔊" />
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <Tile title="Camera" desc="Detect hidden cam" to="/camera" icon="📷" />
+        <Tile title="News" desc="Updates" to="/news" icon="📰" />
+        <Tile title="Siren" desc="Alarm" to="/siren" icon="🔊" />
         <Tile title="Map" desc="Safe zones" to="/map" icon="🗺️" />
       </div>
 
-      {/* 🚨 SOS BUTTON */}
+      {/* SOS */}
       <div
-        onClick={() => triggerSOS()}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-red-500 to-pink-500 text-white w-16 h-16 flex items-center justify-center rounded-full shadow-2xl text-2xl cursor-pointer hover:scale-110 transition animate-bounce"
+        onClick={triggerSOS}
+        className="fixed bottom-5 right-5 bg-red-500 w-16 h-16 flex items-center justify-center rounded-full text-white text-2xl"
       >
         🚨
       </div>
