@@ -126,6 +126,8 @@ https://maps.google.com/?q=${latitude},${longitude}`;
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const { latitude, longitude } = pos.coords;
 
+    console.log("Location:", latitude, longitude);
+
     try {
       const res = await fetch("https://safeher-1-mw84.onrender.com/predict", {
         method: "POST",
@@ -138,10 +140,15 @@ https://maps.google.com/?q=${latitude},${longitude}`;
         }),
       });
 
+      console.log("Response:", res);
+
       const data = await res.json();
-      setSafetyScore(data.safety_score);
+      console.log("Data:", data);
+
+      setSafetyScore(data.safety_score || 50);
     } catch (err) {
-      console.log("API error", err);
+      console.log("ERROR:", err);
+      setSafetyScore(50); // fallback
     }
   });
 }, []);
