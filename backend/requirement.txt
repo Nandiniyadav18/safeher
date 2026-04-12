@@ -1,4 +1,4 @@
-
-git add .
-git commit -m "fixed cors"
-git push
+flask
+flask-cors
+gunicorn
+requests

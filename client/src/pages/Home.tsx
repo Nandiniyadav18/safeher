@@ -157,9 +157,13 @@ https://maps.google.com/?q=${latitude},${longitude}`;
     <div className="min-h-screen bg-gradient-to-br from-pink-200 via-pink-100 to-white pb-24">
 
       {/* HEADER */}
-      <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-5 text-center text-xl font-bold shadow">
-        💖 SafeHer
-      </div>
+      <div className="bg-gradient-to-r from-pink-500 via-rose-400 to-pink-400 text-white p-5 text-center text-2xl font-semibold shadow-md rounded-b-3xl">
+    💖 SafeHer
+  </div>
+
+  <div className="text-center mt-2 text-pink-600 text-sm font-medium">
+    Your Smart Safety Companion ✨
+  </div>
 
       {/* AI SCORE */}
       <div className="text-center mt-4">
