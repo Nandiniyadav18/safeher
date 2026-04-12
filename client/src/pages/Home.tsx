@@ -127,7 +127,7 @@ https://maps.google.com/?q=${latitude},${longitude}`;
     const { latitude, longitude } = pos.coords;
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/predict", {
+      const res = await fetch("https://safeher-1-mw84.onrender.com/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
