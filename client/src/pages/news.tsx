@@ -23,16 +23,20 @@ const News = () => {
 
     const apiKey = "559516ecdf02a00e4d56c956d1b1ea60";
 
+    
     fetch(
-      `https://gnews.io/api/v4/search?q=women+${category}&lang=en&max=6&apikey=${apiKey}`
+       `https://gnews.io/api/v4/search?q=women safety&lang=en&max=6&apikey=${apiKey}`
     )
-      .then((res) => res.json())
-      .then((data) => {
+       .then((res) => res.json())
+       .then((data) => {
+        console.log("GNEWS:", data);
         setArticles(data.articles || []);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
+       })
+       .catch((err) => {
+         console.error(err);
+         setLoading(false);
+       });
 
   useEffect(() => {
     fetchNews();
