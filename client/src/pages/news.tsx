@@ -12,7 +12,6 @@ const News = () => {
     window.speechSynthesis.speak(speech);
   };
 
-  // 🤖 simple AI summary (manual logic)
   const getSummary = (desc: string) => {
     if (!desc) return "No summary available";
     return desc.split(".").slice(0, 2).join(".") + ".";
@@ -23,21 +22,22 @@ const News = () => {
 
     const apiKey = "559516ecdf02a00e4d56c956d1b1ea60";
 
-    
     fetch(
-       `https://gnews.io/api/v4/search?q=women safety&lang=en&max=6&apikey=${apiKey}`
+      `https://gnews.io/api/v4/search?q=women+${category}&lang=en&max=6&apikey=${apiKey}`
     )
-       .then((res) => res.json())
-       .then((data) => {
+      .then((res) => res.json())
+      .then((data) => {
         console.log("GNEWS:", data);
         setArticles(data.articles || []);
         setLoading(false);
-       })
-       .catch((err) => {
-         console.error(err);
-         setLoading(false);
-       });
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  };
 
+  // ✅ CORRECT POSITION
   useEffect(() => {
     fetchNews();
   }, [category]);
@@ -82,6 +82,13 @@ const News = () => {
           </p>
         )}
 
+        {/* EMPTY STATE */}
+        {!loading && articles.length === 0 && (
+          <p className="text-red-500">
+            ⚠️ No news available
+          </p>
+        )}
+
         {/* NEWS */}
         {!loading &&
           articles.map((news, index) => (
@@ -89,7 +96,6 @@ const News = () => {
               key={index}
               className="bg-white/90 backdrop-blur-xl rounded-xl p-4 mb-4 shadow"
             >
-              {/* IMAGE */}
               {news.image && (
                 <img
                   src={news.image}
@@ -101,12 +107,10 @@ const News = () => {
                 {news.title}
               </h3>
 
-              {/* 🤖 AI SUMMARY */}
               <p className="text-sm text-gray-600 mb-2">
                 {getSummary(news.description)}
               </p>
 
-              {/* BUTTONS */}
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={() => speak(news.title)}
@@ -118,6 +122,7 @@ const News = () => {
                 <a
                   href={news.url}
                   target="_blank"
+                  rel="noreferrer"
                   className="text-pink-600 text-sm font-semibold"
                 >
                   Read →
@@ -130,4 +135,4 @@ const News = () => {
   );
 };
 
-export default news;
+export default News;
