@@ -24,53 +24,47 @@ const hospitalIcon = new L.Icon({
   iconSize: [28, 28],
 });
 
-// fallback
-const fallbackPolice = (lat: number, lng: number) => [
-  {
-    lat: lat + 0.004,
-    lng: lng + 0.004,
-    name: "Nearest Police Station",
-    phone: "100",
-  },
-];
+// 🔥 AI Danger Function
+const calculateDanger = (userLat: number, userLng: number, zones: any[]) => {
+  let score = 0;
 
-type DataPoint = {
-  lat: number;
-  lng: number;
-  risk: "safe" | "medium" | "unsafe";
-};
+  zones.forEach((z) => {
+    const dist = Math.sqrt(
+      Math.pow(userLat - z.lat, 2) +
+      Math.pow(userLng - z.lng, 2)
+    );
 
-type PoliceType = {
-  lat: number;
-  lng: number;
-  name: string;
-  phone: string;
+    if (dist < 0.02) {
+      if (z.risk === "unsafe") score += 3;
+      else if (z.risk === "medium") score += 2;
+      else score += 1;
+    }
+  });
+
+  if (score > 8) return "UNSAFE";
+  if (score > 4) return "MEDIUM";
+  return "SAFE";
 };
 
 export default function MapView() {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [zones, setZones] = useState<DataPoint[]>([]);
-  const [hospitals, setHospitals] = useState<[number, number][]>([]);
-  const [police, setPolice] = useState<PoliceType[]>([]);
-  const [nearestPolice, setNearestPolice] = useState<PoliceType | null>(null);
-  const [status, setStatus] = useState("medium");
+  const [userLocation, setUserLocation] = useState<any>(null);
+  const [zones, setZones] = useState<any[]>([]);
+  const [police, setPolice] = useState<any[]>([]);
+  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [nearestPolice, setNearestPolice] = useState<any>(null);
+  const [status, setStatus] = useState("MEDIUM");
 
-  const fetched = useRef(false); // 🚀 FIX multiple API calls
+  const fetched = useRef(false);
 
-  // distance
-  const getDistance = (a: any, b: any) => {
-    return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
-  };
-
-  // zones
+  // 🔹 Generate Zones
   const generateZones = (lat: number, lng: number) => {
-    const arr: DataPoint[] = [];
+    const arr = [];
 
     for (let i = -2; i <= 2; i++) {
       for (let j = -2; j <= 2; j++) {
         const r = Math.random();
-        let risk: "safe" | "medium" | "unsafe" = "safe";
 
+        let risk = "safe";
         if (r > 0.7) risk = "unsafe";
         else if (r > 0.4) risk = "medium";
 
@@ -85,7 +79,7 @@ export default function MapView() {
     setZones(arr);
   };
 
-  // API
+  // 🔹 Fetch Police & Hospital
   const fetchPlaces = async (lat: number, lng: number) => {
     try {
       const query = `
@@ -104,8 +98,8 @@ export default function MapView() {
 
       const data = await res.json();
 
-      const h: [number, number][] = [];
-      let p: PoliceType[] = [];
+      const h: any[] = [];
+      const p: any[] = [];
 
       data.elements.forEach((el: any) => {
         if (el.tags?.amenity === "hospital") {
@@ -122,29 +116,18 @@ export default function MapView() {
         }
       });
 
-      if (p.length === 0) {
-        p = fallbackPolice(lat, lng);
-      }
-
       setHospitals(h);
       setPolice(p);
 
-      const nearest = p.reduce((prev, curr) =>
-        getDistance([lat, lng], [curr.lat, curr.lng]) <
-        getDistance([lat, lng], [prev.lat, prev.lng])
-          ? curr
-          : prev
-      );
-
-      setNearestPolice(nearest);
+      if (p.length > 0) {
+        setNearestPolice(p[0]);
+      }
     } catch {
-      const fallback = fallbackPolice(lat, lng);
-      setPolice(fallback);
-      setNearestPolice(fallback[0]);
+      console.log("API failed");
     }
   };
 
-  // location
+  // 🔹 Location
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
@@ -158,44 +141,55 @@ export default function MapView() {
         fetchPlaces(lat, lng);
         fetched.current = true;
       }
-
-      const r = Math.random();
-      if (r > 0.7) setStatus("unsafe");
-      else if (r > 0.4) setStatus("medium");
-      else setStatus("safe");
     });
   }, []);
+
+  // 🔥 AI Danger Update
+  useEffect(() => {
+    if (userLocation && zones.length > 0) {
+      const result = calculateDanger(
+        userLocation[0],
+        userLocation[1],
+        zones
+      );
+
+      setStatus(result);
+
+      if (result === "UNSAFE") {
+        console.log("⚠️ High Risk Area");
+      }
+    }
+  }, [zones, userLocation]);
 
   if (!userLocation) return <p className="text-center mt-10">Loading...</p>;
 
   const statusColor =
-    status === "safe"
+    status === "SAFE"
       ? "bg-green-500"
-      : status === "medium"
+      : status === "MEDIUM"
       ? "bg-yellow-500"
       : "bg-red-500";
 
   return (
     <div
-      className="min-h-screen p-4 relative overflow-x-hidden"
+      className="min-h-screen p-4 relative"
       style={{
         backgroundImage: "url('/bg.avif')",
         backgroundSize: "cover",
         backgroundAttachment: "fixed",
       }}
     >
-      {/* overlay */}
       <div className="absolute inset-0 bg-white/70"></div>
 
       <div className="relative z-10">
-        {/* HEADER CARD */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow p-4 text-center mb-4">
+        {/* HEADER */}
+        <div className="bg-white/80 rounded-xl p-4 shadow text-center mb-4">
           <h2 className="text-xl font-bold text-pink-600">
             💖 SafeHer AI Map
           </h2>
 
           <div className={`mt-2 text-white px-3 py-1 rounded ${statusColor}`}>
-            Status: {status.toUpperCase()}
+            Status: {status}
           </div>
 
           {nearestPolice && (
@@ -206,14 +200,12 @@ export default function MapView() {
                     `https://www.google.com/maps/dir/?api=1&destination=${nearestPolice.lat},${nearestPolice.lng}`
                   )
                 }
-                className="mt-3 bg-orange-500 text-white px-4 py-2 rounded-lg shadow"
+                className="mt-3 bg-orange-500 text-white px-4 py-2 rounded"
               >
-                🚓 Go to {nearestPolice.name}
+                🚓 Go to Police
               </button>
 
-              <div className="mt-2 text-sm">
-                📞 {nearestPolice.phone}
-              </div>
+              <p className="mt-2 text-sm">📞 {nearestPolice.phone}</p>
             </>
           )}
         </div>
@@ -226,8 +218,10 @@ export default function MapView() {
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
+          {/* USER */}
           <Marker position={userLocation} icon={userIcon} />
 
+          {/* ZONES */}
           {zones.map((z, i) => (
             <Circle
               key={i}
@@ -244,19 +238,21 @@ export default function MapView() {
             />
           ))}
 
-          {hospitals.map((pos, i) => (
-            <Marker key={i} position={pos} icon={hospitalIcon} />
+          {/* HOSPITAL */}
+          {hospitals.map((h, i) => (
+            <Marker key={i} position={h} icon={hospitalIcon} />
           ))}
 
+          {/* POLICE */}
           {police.map((p, i) => (
             <Marker key={i} position={[p.lat, p.lng]} icon={policeIcon} />
           ))}
         </MapContainer>
 
-        {/* ✅ LEGEND FIXED */}
-        <div className="mt-3 text-center bg-white/80 backdrop-blur-xl p-3 rounded shadow">
-          🟢 Safe | 🟡 Medium | 🔴 Unsafe | 🔵 You | 🟠 Police | 
-          <span style={{ color: "red", fontWeight: "bold" }}> + </span> Hospital
+        {/* LEGEND */}
+        <div className="mt-3 text-center bg-white/80 p-3 rounded shadow">
+          🟢 Safe | 🟡 Medium | 🔴 Unsafe | 🔵 You | 🟠 Police |{" "}
+          <span style={{ color: "red", fontWeight: "bold" }}>+</span> Hospital
         </div>
       </div>
     </div>
